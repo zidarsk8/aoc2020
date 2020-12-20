@@ -1,16 +1,4 @@
 import aoc18_data
-from parsimonious.grammar import Grammar
-from parsimonious.nodes import NodeVisitor
-
-grammar = Grammar(
-    """
-    expression = full_plus /plus_exp / number
-    full_plus   = expression plus number
-    plus_exp   = plus expression
-    number     = ~"[1-9]"i
-    plus       = "+" / "*"
-    """
-)
 
 
 class Node:
@@ -305,4 +293,158 @@ def test_part1():
     assert calculate("5 * 9 * (7 * 3 * 3 + 9 * 3 + (8 + 6 * 4)) ") == 12240
     assert calculate("((2 + 4 * 9) * (6 + 9 * 8 + 6) + 6) + 2 + 4 * 2 ") == 13632
 
+    assert calculate_all(aoc18_data.data) == 7293529867931
+
+
+from parsimonious.grammar import Grammar
+from parsimonious.nodes import NodeVisitor
+
+grammar = Grammar(
+    """
+    expression = both_exp / number
+    both_exp   = plus_exp / krat_exp
+    plus_exp   = expression plus number
+    krat_exp   = expression krat number
+    number     = ~"[1-9]"i
+    plus       = "+"
+    krat       = "*"
+    """
+)
+
+
+class IniVisitor(NodeVisitor):
+    def visit_expression(self, node, visited_children):
+        return visited_children
+
+    def visit_number(self, node, visited_children):
+        return int(node.text)
+
+    def visit_krat(self, node, visited_children):
+        return node.text
+
+    def visit_plus(self, node, visited_children):
+        return node.text
+
+    def visit_plus_exp(self, node, visited_children):
+        return visited_children
+
+    def generic_visit(self, node, visited_children):
+        """ The generic visit method. """
+        return visited_children or node
+
+
+def precedence(text: str) -> int:
+    tree = grammar.parse(text.replace(" ", ""))
+    iv = IniVisitor()
+    output = iv.visit(tree)
+    print(output)
+    return 0
+
+
+def test_part2():
+    return  # I have no idea how to make precedence here
+    assert precedence("1 + 2 * 3 + 4 * 5 + 6") == 71
+    assert precedence("1 + (2 * 3) + (4 * (5 + 6))") == 51
+    assert precedence("2 * 3 + (4 * 5) ") == 26
+    assert precedence("5 + (8 * 3 + 9 + 3 * 4 * 3) ") == 437
+    assert precedence("5 * 9 * (7 * 3 * 3 + 9 * 3 + (8 + 6 * 4)) ") == 12240
+    assert precedence("((2 + 4 * 9) * (6 + 9 * 8 + 6) + 6) + 2 + 4 * 2 ") == 13632
+
     assert calculate_all(aoc18_data.data) == 0
+
+
+def parse(text):
+
+    tokens = (
+        "NAME",
+        "NUMBER",
+        "PLUS",
+        "MINUS",
+        "TIMES",
+        "DIVIDE",
+        "EQUALS",
+        "LPAREN",
+        "RPAREN",
+    )
+
+    # Tokens
+
+    t_PLUS = r"\+"
+    t_TIMES = r"\*"
+    t_LPAREN = r"\("
+    t_RPAREN = r"\)"
+
+    def t_NUMBER(t):
+        r"\d+"
+        try:
+            t.value = int(t.value)
+        except ValueError:
+            print("Integer value too large %d", t.value)
+            t.value = 0
+        return t
+
+    def t_error(t):
+        print("Illegal character '%s'" % t.value[0])
+        t.lexer.skip(1)
+
+    import ply.lex as lex
+
+    lexer = lex.lex()
+
+    # Parsing rules
+
+    precedence = (
+        ("left", "TIMES"),
+        ("left", "PLUS"),
+    )
+
+    # dictionary of names
+    names = {}
+
+    def p_statement_assign(t):
+        "statement : NAME EQUALS expression"
+        names[t[1]] = t[3]
+
+    def p_statement_expr(t):
+        "statement : expression"
+        print(t[1])
+        result = t[1]
+
+    def p_expression_binop(t):
+        """expression : expression TIMES expression
+                      | expression PLUS expression"""
+        if t[2] == "+":
+            t[0] = t[1] + t[3]
+        elif t[2] == "*":
+            t[0] = t[1] * t[3]
+
+    def p_expression_group(t):
+        "expression : LPAREN expression RPAREN"
+        t[0] = t[2]
+
+    def p_expression_number(t):
+        "expression : NUMBER"
+        t[0] = t[1]
+
+    def p_expression_name(t):
+        "expression : NAME"
+        try:
+            t[0] = names[t[1]]
+        except LookupError:
+            print("Undefined name '%s'" % t[1])
+            t[0] = 0
+
+    import ply.yacc as yacc
+
+    parser = yacc.yacc()
+    print(parser.parse(text))
+
+
+def p_error(t):
+    print("Syntax error at '%s'" % t.value)
+
+
+def test_yacc():
+    print(parse("(" + ")+(".join(aoc18_data.data.replace(" ","").splitlines()) + ")" ))
+
+    assert False
