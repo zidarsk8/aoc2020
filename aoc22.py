@@ -148,35 +148,45 @@ def test_part_1_prod_sum():
 
 
 def run_sub_game(p1, p2):
-    safety = 200
+    safety = 50000
     existing_sets = set()
 
     existing_sets.add((tuple(p1), tuple(p2)))
     while p1 and p2 and safety:
-        print("-------")
-        print(p1)
-        print(p2)
+        # print("-------")
+        # print(p1)
+        # print(p2)
+
         p1_top = p1.popleft()
         p2_top = p2.popleft()
 
         if p1_top <= len(p1) and p2_top <= len(p2):
-            print("recurse")
-            break
-
-        if p1_top > p2_top:
-            p1.append(p1_top)
-            p1.append(p2_top)
+            # print("*" * 200)
+            # print("recurse")
+            p1_sub, p2_sub = run_sub_game(
+                deque(list(p1)[:p1_top]), deque(list(p2)[:p2_top])
+            )
+            if p1_sub:
+                p1.append(p1_top)
+                p1.append(p2_top)
+            else:
+                p2.append(p2_top)
+                p2.append(p1_top)
         else:
-            p2.append(p2_top)
-            p2.append(p1_top)
+            if p1_top > p2_top:
+                p1.append(p1_top)
+                p1.append(p2_top)
+            else:
+                p2.append(p2_top)
+                p2.append(p1_top)
 
         if (tuple(p1), tuple(p2)) in existing_sets:
             return p1, deque([])
 
         safety -= 1
-    print("-------")
-    print(p1)
-    print(p2)
+    # print("-------")
+    # print(p1)
+    # print(p2)
     return p1, p2
 
 
@@ -196,4 +206,6 @@ def test_part2_infinite():
 
 def test_part2():
     score = part2(test_data)
+    assert score == 291
+    score = part2(data)
     assert score == 291
