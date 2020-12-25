@@ -623,8 +623,13 @@ wwwwwnwnwnwnwnwewswnwwnwwnwnww
 neseswnwswswseswseseseswseswseswseswswsesw
 """.strip()
 
-from typing import List
+from typing import List, Set, Tuple
 from collections import Counter
+
+
+Position = Tuple[int, int]
+Tiles = Set[Position]
+
 
 changes = {
     "e": (0, 1),
@@ -652,7 +657,7 @@ def get_positions(text: str):
 
 def remove_doubles(positions):
     counts = Counter(positions)
-    return [pos for pos in positions if counts[pos] % 2 == 1]
+    return {pos for pos in positions if counts[pos] % 2 == 1}
 
 
 def test_part1():
@@ -663,4 +668,83 @@ def test_part1():
     positions = get_positions(text)
     non_flipped = remove_doubles(positions)
 
-    assert len(non_flipped) == 10
+    assert len(non_flipped) == 521
+
+
+def gather_neighbors(black_tiles: Tiles) -> Tiles:
+    return set(
+        (tile[0] + offset[0], tile[1] + offset[1])
+        for tile in black_tiles
+        for offset in changes.values()
+    )
+
+
+def count_black_neighbors(position: Position, black_tiles: Tiles):
+    return sum(
+        (position[0] - offset[0], position[1] - offset[1]) in black_tiles
+        for offset in changes.values()
+    )
+
+
+def game_of_life(black_tiles: Tiles, steps: int):
+
+    for i in range(steps):
+        all_neighbors: Tiles = gather_neighbors(black_tiles)
+        all_tiles: Tiles = all_neighbors | black_tiles
+        new_black_tiles: Tiles = set()
+        for tile in all_tiles:
+            if tile in black_tiles and count_black_neighbors(tile, black_tiles) in (
+                1,
+                2,
+            ):
+                new_black_tiles.add(tile)
+            elif (
+                tile not in black_tiles
+                and count_black_neighbors(tile, black_tiles) == 2
+            ):
+                new_black_tiles.add(tile)
+                pass
+        black_tiles = new_black_tiles
+
+    return len(black_tiles)
+
+
+def test_part2_small():
+    text = test_data
+    text = (
+        text.replace("se", "a").replace("sw", "b").replace("ne", "c").replace("nw", "d")
+    )
+    positions = get_positions(text)
+    tiles = remove_doubles(positions)
+
+    assert game_of_life(tiles, 1) == 15
+    assert game_of_life(tiles, 2) == 12
+    assert game_of_life(tiles, 3) == 25
+    assert game_of_life(tiles, 4) == 14
+    assert game_of_life(tiles, 5) == 23
+    assert game_of_life(tiles, 6) == 28
+    assert game_of_life(tiles, 7) == 41
+    assert game_of_life(tiles, 8) == 37
+    assert game_of_life(tiles, 9) == 49
+    assert game_of_life(tiles, 10) == 37
+
+    assert game_of_life(tiles, 20) == 132
+    assert game_of_life(tiles, 30) == 259
+    assert game_of_life(tiles, 40) == 406
+    assert game_of_life(tiles, 50) == 566
+    assert game_of_life(tiles, 60) == 788
+    assert game_of_life(tiles, 70) == 1106
+    assert game_of_life(tiles, 80) == 1373
+    assert game_of_life(tiles, 90) == 1844
+    assert game_of_life(tiles, 100) == 2208
+
+
+def test_part2():
+    text = data
+    text = (
+        text.replace("se", "a").replace("sw", "b").replace("ne", "c").replace("nw", "d")
+    )
+    positions = get_positions(text)
+    tiles = remove_doubles(positions)
+
+    assert game_of_life(tiles, 100) == 4242
